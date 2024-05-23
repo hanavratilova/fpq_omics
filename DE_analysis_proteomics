@@ -1,0 +1,102 @@
+################# Load libraries ###############
+library(limma)        #linear models and differential expression
+library(tidyverse)
+library(readr)
+library(magrittr)
+library(dplyr)
+
+################# Load data ###############
+#extract olink_data from UK Biobank Table ID 1072
+# Rows =  individuals 
+# Column#1 = eid (participant identifer)
+# Column#2 = ins_index (instance index)
+# Column#3 = protein_id (encoded ID linking to UniProt FGene name and Protein name)
+# Column#4 = result (Normalized Protein Expression (NPX) result)
+
+#protein name coding
+name <- read.csv("E:/Hana/Proteomics/input/name.csv")
+colnames(name)[1] <- "protein_id"
+
+#subset for each instance
+olink_ins_0 <- subset(olink_data, ins_index == "0")
+olink_ins_2 <- subset(olink_data, ins_index == "2")
+olink_ins_3 <- subset(olink_data, ins_index == "3")
+
+#add protein name column into dataset
+olink <- merge(olink_ins_0, name, by = "protein_id")
+
+#add food preference profile and sociodemographic data
+olink_fpp <- merge (olink, fpp_sd, by = "eid")
+
+# Read the expression dataframe
+npx_df <- olink_fpp[,4:2925] 
+
+################# Run Limma ###############
+# Specify the sample condition
+outcome <- factor(olink_fpp$profile)
+age <- as.numeric(olink_fpp$age_when_attended_assessment_centre_f21003_0_0)
+sex <- (olink_fpp$sex_f31_0_0)
+design <- model.matrix(~0 + outcome + age + sex, olink_fpp)
+
+# lmFit expects input array to have structure: protein x sample
+# lmFit fits a linear model using weighted least squares for each protein:
+fit <- lmFit(t(npx_df), design)
+
+# Comparisons between groups (log fold-changes) are obtained as contrasts of
+# these fitted linear models:
+# Samples are grouped based on experimental condition
+# The variability of protein expression is compared between these groups
+contr <- makeContrasts(outcome1 - outcome2, levels = design)
+
+# Estimate contrast for each protein
+tmp <- contrasts.fit(fit, contr)
+
+# Empirical Bayes smoothing of standard errors (shrinks standard errors
+# that are much larger or smaller than those from other proteins towards the average standard error)
+tmp <- eBayes(tmp)
+
+# Run Limma for pairwise comparison
+## Comparisons between groups (log fold-changes) are obtained as contrasts of these fitted linear models:
+## Samples are grouped based on experimental condition
+## The variability of protein expression is compared between these groups
+contr12 <- makeContrasts(outcome1 - outcome2, levels = design)
+contr13 <- makeContrasts(outcome1 - outcome3, levels = design)
+contr23 <- makeContrasts(outcome2 - outcome3, levels = design)
+
+
+## Estimate contrast for each protein
+tmp12 <- contrasts.fit(fit, contr12)
+tmp13 <- contrasts.fit(fit, contr13)
+tmp23 <- contrasts.fit(fit, contr23)
+
+## Empirical Bayes smoothing of standard errors (shrinks standard errors that are much larger or smaller than those from other proteins towards the average standard error)
+tmp12 <- eBayes(tmp12)
+tmp13 <- eBayes(tmp13)
+tmp23 <- eBayes(tmp23)
+
+##Pairwise results
+top.table13 <- topTable(tmp13, sort.by = "P", n = Inf)
+results13 <-  as.data.frame(top.table13)
+
+top.table23 <- topTable(tmp23, sort.by = "P", n = Inf)
+results23 <-  as.data.frame(top.table23)
+
+# Extract results
+top.table <- topTable(tmp, sort.by = "P", n = Inf)
+results <-  as.data.frame(top.table)
+
+#pairwise analysis with important protein
+X1_vs_X2 <- results12 %>%
+  mutate(protein_type = case_when(logFC >= 0.14 & adj.P.Val <= 0.05 ~ "up",
+                               logFC <= -0.13 & adj.P.Val <= 0.05 ~ "down",
+                               TRUE ~ "ns"))
+
+X1_vs_X3 <- results13 %>%
+  mutate(protein_type = case_when(logFC >= 0.14 & adj.P.Val <= 0.05 ~ "up",
+                               logFC <= -0.2 & adj.P.Val <= 0.05 ~ "down",
+                               TRUE ~ "ns"))
+
+X2_vs_X3 <- results23 %>%
+  mutate(protein_type = case_when(logFC >= 0.14 & adj.P.Val <= 0.05 ~ "up",
+                               logFC <= -0.2 & adj.P.Val <= 0.05 ~ "down",
+                               TRUE ~ "ns"))
