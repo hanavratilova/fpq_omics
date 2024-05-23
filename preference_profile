@@ -5,6 +5,7 @@ library(dplyr)     	#data management
 library(REdaS)     	#produce KMO and bartletts test
 library(GPArotation) 	#functions for the rotation of factor loadings matrices
 library(mclust)    	#for latent profile analysis
+library(plotly)		#for visualization
 
 ################# Load data ###############
 
@@ -71,3 +72,9 @@ EEV <- data.frame(fpm1p3$parameters$mean) %>%
 
 # save dataset with profile for each individual eid
 modelEEV3 <- bind_cols(fpq_food$eid, fpm1p3$classification)
+
+# Data visualisation
+plot_ly() %>% 
+  add_data(EEV3) %>% 
+  add_trace(x = ~Liking, y = ~Mean, color = ~Profile, colors = c('#F8766D','#00B936','#619CFF'))%>% 
+ layout(xaxis = xform)
