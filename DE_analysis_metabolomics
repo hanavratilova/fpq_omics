@@ -1,0 +1,170 @@
+################# Load libraries ###############
+library(ukbnmr)      #removing unwanted technical variation
+library(data.table)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(volcano3D)  #create three-way volcano plot
+library(magrittr)
+library(limma)      #linear models and differential expression
+
+################# Data extraction ###############
+# extract metabolomics data according to ukbnmr tutorial (https://github.com/sritchie73/ukbnmr)
+decoded <- fread("ukb51944.csv")
+nmr <- extract_biomarkers(decoded)
+biomarker_qc_flags <- extract_biomarker_qc_flags(decoded)
+sample_qc_flags <- extract_sample_qc_flags(decoded)
+processed <- remove_technical_variation(decoded)
+
+t <- processed$biomarkers   # a list of extracted biomarker concentrations.
+# Rows =  individuals (rownames = UK Biobank eids)
+# Columns = metabolites (colnames = metabolite names)
+# Values = metabolite concentrations
+
+################# Data preprocessing ###############
+
+# check for missing value
+# percentage of missing values by number of participants
+perc_miss_id <- rowMeans (is.na (t)) * 100
+df_perc_missing_by_participant <- as.data.frame(perc_miss_id)
+## number of participant with >25% missing value is 1,806 participants
+
+#percentage of missing values by number of metabolite
+perc_miss <- colMeans (is.na (t)) * 100
+df_perc_missing_by_metabolite <- as.data.frame(perc_miss)
+
+# subset participants for baseline measurement only (visit_index = 0)
+t_0 <- subset(t, visit_index == "0")
+
+# replace missing value with half of the minimum positive value
+impute_half_min <- function(x) {
+  min_pos_value <- min(x[x > 0], na.rm = TRUE)
+  x[is.na(x)] <- min_pos_value / 2
+  return(x)
+}
+
+t_0_imputed <- as.data.frame(lapply(t_0, impute_half_min))
+
+#merge metabolomics data with food preference profile
+t_fpp <- merge(modelEEV3, t_0_imputed, by = "eid")
+
+# subset for 168 metabolites only
+t_met168 <- t_fpp[,4:171]
+
+#natural logarithmic transformation (ln[x+1])
+q_t=log(t_met168 + 1) 
+
+#scale each variable to have a mean of 0 and sd of 1
+q_s <- scale(q_t)
+
+################# Volcano3D for pairwise comparison ###############
+# Load data
+met168 <- t_met168
+met168$eid <- t_fpp$eid
+met168 <- met168 %>% 
+  select(eid, everything())
+column_to_rownames(met168, 'eid')
+
+# Coordinates for Three Way Polar Plot
+syn_polar <- polar_coords(outcome = t_fpp$profile,
+                          data = met168)
+# Three-Dimensional Volcano Plot
+volcano3D(syn_polar)
+
+# Three-way polar plot
+radial_plotly(syn_polar)
+
+################# Limma for pairwise comparison ###############
+# add age and sex column from uk biobank data to t_fpp dataframe 
+# Specify the sample condition (X1 vs X2 vs X3)
+outcome <- factor(t_fpp$profile)
+age <- as.numeric(t_fpp$age_when_attended_assessment_centre_f21003_0_0)
+sex <- as.factor(t_fpp$sex_f31_0_0)
+design <- model.matrix(~0 + outcome + age + sex, t_fpp)
+
+
+# lmFit expects input array to have structure: metabolite x sample
+# lmFit fits a linear model using weighted least squares for each metabolite:
+fit <- lmFit(t(q_s), design)
+
+#Run Limma for three-way comparison
+contr <- makeContrasts(outcome1 - outcome2, outcome1 - outcome3, outcome2 - outcome3, levels = design)
+
+## Estimate contrast for each protein
+tmp <- contrasts.fit(fit, contr)
+
+## Empirical Bayes smoothing of standard errors (shrinks standard errors that are much larger or smaller than those from other proteins towards the average standard error)
+tmp <- eBayes(tmp)
+
+# Run Limma for pairwise comparison
+## Comparisons between groups (log fold-changes) are obtained as contrasts of these fitted linear models:
+## Samples are grouped based on experimental condition
+## The variability of protein expression is compared between these groups
+contr12 <- makeContrasts(outcome1 - outcome2, levels = design)
+contr13 <- makeContrasts(outcome1 - outcome3, levels = design)
+contr23 <- makeContrasts(outcome2 - outcome3, levels = design)
+
+
+## Estimate contrast for each protein
+tmp12 <- contrasts.fit(fit, contr12)
+tmp13 <- contrasts.fit(fit, contr13)
+tmp23 <- contrasts.fit(fit, contr23)
+
+## Empirical Bayes smoothing of standard errors (shrinks standard errors that are much larger or smaller than those from other proteins towards the average standard error)
+tmp12 <- eBayes(tmp12)
+tmp13 <- eBayes(tmp13)
+tmp23 <- eBayes(tmp23)
+
+# Extract the three-way result
+top.table <- topTable(tmp, sort.by = "F", n = Inf)
+results <-  as.data.frame(top.table)
+
+#Pairwise results
+top.table12 <- topTable(tmp12, sort.by = "P", n = Inf)
+results12 <-  as.data.frame(top.table12)
+
+top.table13 <- topTable(tmp13, sort.by = "P", n = Inf)
+results13 <-  as.data.frame(top.table13)
+
+top.table23 <- topTable(tmp23, sort.by = "P", n = Inf)
+results23 <-  as.data.frame(top.table23)
+
+# Convert results to a data.frame
+results_df <- data.frame(results) %>%
+    rownames_to_column(var = "metabolite")
+results12_df <- data.frame(results12) %>%
+    rownames_to_column(var = "metabolite")
+results13_df <- data.frame(results13) %>%
+    rownames_to_column(var = "metabolite")
+results23_df <- data.frame(results23) %>%
+    rownames_to_column(var = "metabolite")
+
+# Compare significant DE metabolites
+de_metabolite_df <- results_df[results_df[,'P.Value']<0.05,]
+de12_metabolite_df <- results12_df[results12_df[,'P.Value']<0.05,]
+de13_metabolite_df <- results13_df[results13_df[,'P.Value']<0.05,]
+de23_metabolite_df <- results23_df[results23_df[,'P.Value']<0.05,]
+
+de12_metabolite_df$FC<-2^(abs(de12_metabolite_df$logFC))
+de13_metabolite_df$FC<-2^(abs(de13_metabolite_df$logFC))
+de23_metabolite_df$FC<-2^(abs(de23_metabolite_df$logFC))
+
+# differential expressed metabolites
+X1_vs_X2 <- de12_metabolite_df %>%
+  mutate(metabolite_type = case_when(logFC >= 0.19 & adj.P.Val <= 0.05 ~ "up",
+                               logFC <= -0.19 & adj.P.Val <= 0.05 ~ "down",
+                               TRUE ~ "ns"))   
+
+X1_vs_X3 <- de13_metabolite_df %>%
+  mutate(metabolite_type = case_when(logFC >= 0.2 & adj.P.Val <= 0.05 ~ "up",
+                               logFC <= -0.2 & adj.P.Val <= 0.05 ~ "down",
+                               TRUE ~ "ns"))
+
+X2_vs_X3 <- de23_metabolite_df %>%
+  mutate(metabolite_type = case_when(logFC >= 0.15 & adj.P.Val <= 0.05 ~ "up",
+                               logFC <= -0.15 & adj.P.Val <= 0.05 ~ "down",
+                               TRUE ~ "ns")) 
+
+
+
+
