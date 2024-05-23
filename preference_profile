@@ -1,0 +1,73 @@
+################# Load libraries ###############
+library(tidyverse) 	#data manipulation
+library(psych)     	#for rotated factor analysis
+library(dplyr)     	#data management
+library(REdaS)     	#produce KMO and bartletts test
+library(GPArotation) 	#functions for the rotation of factor loadings matrices
+library(mclust)    	#for latent profile analysis
+
+################# Load data ###############
+
+# Load the UK Biobank Food Preference Questionnaire (FPQ) data
+# Rows =  individuals (rownames = UK Biobank eids)
+# Columns = food items (colnames = food names)
+# Values = FPQ score
+
+
+################# Data preprocessing ###############
+
+# recode the value where "never tried" and "prefer not to answer" is treates as 0 value
+
+fpq_food <- fpq_food %>% 
+	funs(recode(.,'do not wish to answer' = 0, 'never tried' = 0, 'extremely dislike' = 1, '2'=2, '3'=3, '4'=4, 'neither like nor dislike' = 5, '6'=6, '7'=7, '8'=8, 'extremely like' = 9)))
+
+# exclude participants with >25% missing value
+
+fpq_food[fpq_food == 0] <- NA
+fpq <- fpq_food[which(rowMeans(is.na(fpq_food)) < 0.25), ]
+
+# the data is in ordinal format, for further analysis we need to convert it into numerical
+fpq[] <- lapply(fpq, as.numeric)
+fpq[is.na(fpq)] <- 0 
+
+################# Exploratory Factor Analysis ###############
+
+# Bartlett’s Test of Sphericity and KMO
+bart_spher(fpq, use = c("complete.obs"))
+KMO(fpq)
+
+# set nfactors to n items for factor analysis, in this case there is 140 items so we state nfactors = 140 oblimin is selescted as the rotation
+fa(fpq, nfactors = 140, rotate = "oblimin")
+
+# using Kaisers rule, eigenvalue >1 represent valid factor (ss loadings), only 19 items are >1, explaining 37% of the variances
+# set new nfactors to 19
+
+fa(fpq2, nfactors = 19, rotate = "oblimin")
+
+################# Latent Profile Analysis ###############
+
+# transform data into z-score
+fpq2 <- fpq %>%
+  na.omit() %>%
+  mutate_all(list(scale))
+
+# check optimal number of classes and the optimal model variant
+BIC <- mclustBIC(fpq2)
+plot(BIC)
+summary(BIC)
+## EEV with 3 class model is the optimal fit
+
+# Create Gaussian finite mixture model fitted by EM algorithm 
+fpm1p3 <- Mclust(fpq2, modelNames = "EEV", G = 3, x = BIC)
+summary(fpm1p3)
+
+# Save model as object for EEV with 3 class
+EEV <- data.frame(fpm1p3$parameters$mean) %>%
+  rownames_to_column() %>%
+  rename(Liking = rowname) %>%
+  pivot_longer(cols = c(X1, X2, X3), names_to = "Profile", values_to = "Mean") %>%
+  mutate(Mean = round(Mean, 2),
+         Mean = ifelse(Mean > 1, 1, Mean))
+
+# save dataset with profile for each individual eid
+modelEEV3 <- bind_cols(fpq_food$eid, fpm1p3$classification)
