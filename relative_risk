@@ -1,0 +1,473 @@
+################# Load libraries ###############
+library(tidyverse)
+library(dplyr)
+
+################# Data extraction ###############
+# extract ICD10 diagnoses data from UKB RAP 
+# Rows =  individuals
+# Columns#1 = eid
+# Columns#2 = diagnoses_icd10
+
+#match food preference profile 
+fpp_icd10 <- merge(modelEEV3, fpq_icd_participant, by = "eid")
+fpp_icd10 <-  fpp_icd10 %>% mutate(X1 = if_else(profile == 1 , 1, 0),
+                                   X2 = if_else(profile == 2, 1, 0),
+                                   X3 = if_else(profile == 3, 1, 0))
+#calculate incidence
+fpp_icd10$Anaemia <- ifelse(grepl("D50|D51|D52|D53", fpp_icd10$diagnoses_icd10), 1, 0) # Nutritional anaemias
+fpp_icd10$Angina <- ifelse(grepl("I20",fpp_icd10$diagnoses_icd10), 1, 0) # Angina pectoris
+fpp_icd10$Anxiety <- ifelse(grepl("F41",fpp_icd10$diagnoses_icd10), 1, 0) # Other anxiety disorders
+fpp_icd10$Asthma <- ifelse(grepl("J45",fpp_icd10$diagnoses_icd10), 1, 0) # Asthma
+fpp_icd10$Atrial_fibrilliation <- ifelse(grepl("I48",fpp_icd10$diagnoses_icd10), 1, 0) # Atrial fibrillation and flutter
+fpp_icd10$Bronchiectasis <- ifelse(grepl("J47",fpp_icd10$diagnoses_icd10), 1, 0) # Bronchiectasis
+fpp_icd10$Cancer <- ifelse(grepl("C0|C1|C2|C3|C4|C5|C6|C7|C8|C9]",fpp_icd10$diagnoses_icd10), 1, 0) # Malignant neoplasm
+fpp_icd10$CKD <- ifelse(grepl("N18",fpp_icd10$diagnoses_icd10), 1, 0) # Chronic renal failure
+fpp_icd10$COPD <- ifelse(grepl("J44",fpp_icd10$diagnoses_icd10), 1, 0) # Other chronic obstructive pulmonary disease
+fpp_icd10$Chronic_sinusitis <- ifelse(grepl("J32",fpp_icd10$diagnoses_icd10), 1, 0) # chronic sinusitis
+fpp_icd10$Cirrhosis <- ifelse(grepl("K74",fpp_icd10$diagnoses_icd10), 1, 0) # Fibrosis and cirrhosis of liver
+fpp_icd10$Dementia <- ifelse(grepl("F01|F02|F03",fpp_icd10$diagnoses_icd10), 1, 0) # Vascular dementia, Dementia in other diseases classified elsewhere, unspecified dementia
+fpp_icd10$Depression <- ifelse(grepl("F32|F33",fpp_icd10$diagnoses_icd10), 1, 0) # Depressive episode
+fpp_icd10$Dermatitis <- ifelse(grepl("L2|L3]",fpp_icd10$diagnoses_icd10), 1, 0) # Dermatitis and eczema
+fpp_icd10$Diabetes <- ifelse(grepl("E10|E11|E12|E13|E14",fpp_icd10$diagnoses_icd10), 1, 0) # Insulin dependent diabetes mellitus
+fpp_icd10$Epilepsy <- ifelse(grepl("G40|G41",fpp_icd10$diagnoses_icd10), 1, 0) # Epilepsy
+fpp_icd10$Glaucoma <- ifelse(grepl("H40|H41|H42",fpp_icd10$diagnoses_icd10), 1, 0) # Glaucoma
+fpp_icd10$Heart_failure <- ifelse(grepl("I50",fpp_icd10$diagnoses_icd10), 1, 0) # Heart failure
+fpp_icd10$Hepatitis <- ifelse(grepl("B15|B16|B17|B18|B19",fpp_icd10$diagnoses_icd10), 1, 0) # Viral hepatitis
+fpp_icd10$Hypertension <- ifelse(grepl("I10|I11|I12|I13|I14|I15",fpp_icd10$diagnoses_icd10), 1, 0) # Hypertensive diseases
+fpp_icd10$Inflammatory_bowel_disease <- ifelse(grepl("K50|K51|K52",fpp_icd10$diagnoses_icd10), 1, 0) # Chron's disease, Ulcerative colitis
+fpp_icd10$IBS <- ifelse(grepl("K58",fpp_icd10$diagnoses_icd10), 1, 0) # Irritable bowel syndrome
+fpp_icd10$Meningitis <- ifelse(grepl("G00|G01|G02|G03",fpp_icd10$diagnoses_icd10), 1, 0) # Bacterial meningitis, not elsewhere classified
+fpp_icd10$Migraine <- ifelse(grepl("G43",fpp_icd10$diagnoses_icd10), 1, 0) #Migraine 
+fpp_icd10$Multiple_schlerosis <- ifelse(grepl("G35",fpp_icd10$diagnoses_icd10), 1, 0) # Multiple sclerosis
+fpp_icd10$Myocardial_infarction <- ifelse(grepl("I21|I22",fpp_icd10$diagnoses_icd10), 1, 0) # Acute myocardial infarction, subsequent myocardial infarction
+fpp_icd10$Osteoporosis <- ifelse(grepl("M80|M81|M82",fpp_icd10$diagnoses_icd10), 1, 0) # Osteoporosis with pathological fracture
+fpp_icd10$Parkinsons_disease <- ifelse(grepl("G20|G21",fpp_icd10$diagnoses_icd10), 1, 0) # Parkinson's disease
+fpp_icd10$Peripheral_vascular_disease <- ifelse(grepl("I73",fpp_icd10$diagnoses_icd10), 1, 0) # Other peripheral vascular diseases
+fpp_icd10$Prostate_problem <- ifelse(grepl("N40|N41|N42",fpp_icd10$diagnoses_icd10), 1, 0) # diseases of male genital organs
+fpp_icd10$Rheumatoid_arthritis <- ifelse(grepl("M05|M06",fpp_icd10$diagnoses_icd10), 1, 0) # Seropsitive rheumatoid arthritis, Other rheumatoid arthritis
+fpp_icd10$Schizophrenia <- ifelse(grepl("F20|F21|F22|F23|F24|F25|F26|F27|F28|F29",fpp_icd10$diagnoses_icd10), 1, 0) # Schizophrenia, schizotypal and delusional disorders
+fpp_icd10$Stroke <- ifelse(grepl("I60|I61|I62|I63|I64|I65|I66|I67|I68|I69",fpp_icd10$diagnoses_icd10), 1, 0) # Cerebrovascular diseases
+fpp_icd10$Thyroid_problem <- ifelse(grepl("E00|E01|E02|E03|E04|E05|E06|E07",fpp_icd10$diagnoses_icd10), 1, 0) # Dysorders of thyroid gland
+fpp_icd10$Tuberculosis <- ifelse(grepl("A15|A16|A17|A18|A19",fpp_icd10$diagnoses_icd10), 1, 0) # Tuberculosis
+fpp_icd10$Vestibular_disorder <- ifelse(grepl("H81|H82|H83",fpp_icd10$diagnoses_icd10), 1, 0) # Disorders of vestibular function
+fpp_icd10$Constipation <- ifelse(grepl("K59",fpp_icd10$diagnoses_icd10), 1, 0) # Constipation
+fpp_icd10$Dyspepsia <- ifelse(grepl("K30|K31",fpp_icd10$diagnoses_icd10), 1, 0) # Dyspepsia
+fpp_icd10$Hearing_loss <- ifelse(grepl("H90|H91",fpp_icd10$diagnoses_icd10), 1, 0) # Conductive and sensorineural hearing loss
+fpp_icd10$Diverticular_disease_of_intestine <- ifelse(grepl("K57|K58",fpp_icd10$diagnoses_icd10), 1, 0) #Diversticular disease of intestine
+fpp_icd10$Endometriosis <- ifelse(grepl("N80",fpp_icd10$diagnoses_icd10), 1, 0) # Endometriosis
+
+################# Create contingency table ###############
+#anaemia
+Anaemia_X1 <- table(fpp_icd10$X1, fpp_icd10$Anaemia)
+Anaemia_X2 <- table(fpp_icd10$X2, fpp_icd10$Anaemia)
+Anaemia_X3 <- table(fpp_icd10$X3, fpp_icd10$Anaemia)
+
+#angina
+Angina_X1 <- table(fpp_icd10$X1, fpp_icd10$Angina)
+Angina_X2 <- table(fpp_icd10$X2, fpp_icd10$Angina)
+Angina_X3 <- table(fpp_icd10$X3, fpp_icd10$Angina)
+
+#anxiety
+Anxiety_X1 <- table(fpp_icd10$X1, fpp_icd10$Anxiety)
+Anxiety_X2 <- table(fpp_icd10$X2, fpp_icd10$Anxiety)
+Anxiety_X3 <- table(fpp_icd10$X3, fpp_icd10$Anxiety)
+
+#asthma
+Asthma_X1 <- table(fpp_icd10$X1, fpp_icd10$Asthma)
+Asthma_X2 <- table(fpp_icd10$X2, fpp_icd10$Asthma)
+Asthma_X3 <- table(fpp_icd10$X3, fpp_icd10$Asthma)
+
+#Atrial fibrilliation
+AF_X1 <- table(fpp_icd10$X1, fpp_icd10$Atrial_fibrilliation)
+AF_X2 <- table(fpp_icd10$X2, fpp_icd10$Atrial_fibrilliation)
+AF_X3 <- table(fpp_icd10$X3, fpp_icd10$Atrial_fibrilliation)
+
+#bronchiectasis
+Bronch_X1 <- table(fpp_icd10$X1, fpp_icd10$Bronchiectasis)
+Bronch_X2 <- table(fpp_icd10$X2, fpp_icd10$Bronchiectasis)
+Bronch_X3 <- table(fpp_icd10$X3, fpp_icd10$Bronchiectasis)
+
+#cancer
+Cancer_X1 <- table(fpp_icd10$X1, fpp_icd10$Cancer)
+Cancer_X2 <- table(fpp_icd10$X2, fpp_icd10$Cancer)
+Cancer_X3 <- table(fpp_icd10$X3, fpp_icd10$Cancer)
+
+#CKD
+CKD_X1 <- table(fpp_icd10$X1, fpp_icd10$CKD)
+CKD_X2 <- table(fpp_icd10$X2, fpp_icd10$CKD)
+CKD_X3 <- table(fpp_icd10$X3, fpp_icd10$CKD)
+
+#COPD
+COPD_X1 <- table(fpp_icd10$X1, fpp_icd10$COPD)
+COPD_X2 <- table(fpp_icd10$X2, fpp_icd10$COPD)
+COPD_X3 <- table(fpp_icd10$X3, fpp_icd10$COPD)
+
+#chronic sinusitis
+Chrsin_X1 <- table(fpp_icd10$X1, fpp_icd10$Chronic_sinusitis)
+Chrsin_X2 <- table(fpp_icd10$X2, fpp_icd10$Chronic_sinusitis)
+Chrsin_X3 <- table(fpp_icd10$X3, fpp_icd10$Chronic_sinusitis)
+
+#cirrhosis
+Cirrhosis_X1 <- table(fpp_icd10$X1, fpp_icd10$Cirrhosis)
+Cirrhosis_X2 <- table(fpp_icd10$X2, fpp_icd10$Cirrhosis)
+Cirrhosis_X3 <- table(fpp_icd10$X3, fpp_icd10$Cirrhosis)
+
+#dementia
+Dementia_X1 <- table(fpp_icd10$X1, fpp_icd10$Dementia)
+Dementia_X2 <- table(fpp_icd10$X2, fpp_icd10$Dementia)
+Dementia_X3 <- table(fpp_icd10$X3, fpp_icd10$Dementia)
+
+#depression
+Depression_X1 <- table(fpp_icd10$X1, fpp_icd10$Depression)
+Depression_X2 <- table(fpp_icd10$X2, fpp_icd10$Depression)
+Depression_X3 <- table(fpp_icd10$X3, fpp_icd10$Depression)
+
+#diabetes
+Diabetes_X1 <- table(fpp_icd10$X1, fpp_icd10$Diabetes)
+Diabetes_X2 <- table(fpp_icd10$X2, fpp_icd10$Diabetes)
+Diabetes_X3 <- table(fpp_icd10$X3, fpp_icd10$Diabetes)
+
+#eczema or dermatitis
+Dermatitis_X1 <- table(fpp_icd10$X1, fpp_icd10$Dermatitis)
+Dermatitis_X2 <- table(fpp_icd10$X2, fpp_icd10$Dermatitis)
+Dermatitis_X3 <- table(fpp_icd10$X3, fpp_icd10$Dermatitis)
+
+#epilepsy
+Epilepsy_X1 <- table(fpp_icd10$X1, fpp_icd10$Epilepsy)
+Epilepsy_X2 <- table(fpp_icd10$X2, fpp_icd10$Epilepsy)
+Epilepsy_X3 <- table(fpp_icd10$X3, fpp_icd10$Epilepsy)
+
+#glaucoma
+Glaucoma_X1 <- table(fpp_icd10$X1, fpp_icd10$Glaucoma)
+Glaucoma_X2 <- table(fpp_icd10$X2, fpp_icd10$Glaucoma)
+Glaucoma_X3 <- table(fpp_icd10$X3, fpp_icd10$Glaucoma)
+
+#heart failure
+HF_X1 <- table(fpp_icd10$X1, fpp_icd10$Heart_failure)
+HF_X2 <- table(fpp_icd10$X2, fpp_icd10$Heart_failure)
+HF_X3 <- table(fpp_icd10$X3, fpp_icd10$Heart_failure)
+
+#hepatitis
+Hepatitis_X1 <- table(fpp_icd10$X1, fpp_icd10$Hepatitis)
+Hepatitis_X2 <- table(fpp_icd10$X2, fpp_icd10$Hepatitis)
+Hepatitis_X3 <- table(fpp_icd10$X3, fpp_icd10$Hepatitis)
+
+#hypertension
+Hypertension_X1 <- table(fpp_icd10$X1, fpp_icd10$Hypertension)
+Hypertension_X2 <- table(fpp_icd10$X2, fpp_icd10$Hypertension)
+Hypertension_X3 <- table(fpp_icd10$X3, fpp_icd10$Hypertension)
+
+#inflammatory bowel disease
+IBD_X1 <- table(fpp_icd10$X1, fpp_icd10$Inflammatory_bowel_disease)
+IBD_X2 <- table(fpp_icd10$X2, fpp_icd10$Inflammatory_bowel_disease)
+IBD_X3 <- table(fpp_icd10$X3, fpp_icd10$Inflammatory_bowel_disease)
+
+#irritable bowel syndrome
+IBS_X1 <- table(fpp_icd10$X1, fpp_icd10$IBS)
+IBS_X2 <- table(fpp_icd10$X2, fpp_icd10$IBS)
+IBS_X3 <- table(fpp_icd10$X3, fpp_icd10$IBS)
+
+#meningitis
+Meningitis_X1 <- table(fpp_icd10$X1, fpp_icd10$Meningitis)
+Meningitis_X2 <- table(fpp_icd10$X2, fpp_icd10$Meningitis)
+Meningitis_X3 <- table(fpp_icd10$X3, fpp_icd10$Meningitis)
+
+#migraine
+Migraine_X1 <- table(fpp_icd10$X1, fpp_icd10$Migraine)
+Migraine_X2 <- table(fpp_icd10$X2, fpp_icd10$Migraine)
+Migraine_X3 <- table(fpp_icd10$X3, fpp_icd10$Migraine)
+
+#multiple schlerosis
+MS_X1 <- table(fpp_icd10$X1, fpp_icd10$Multiple_schlerosis)
+MS_X2 <- table(fpp_icd10$X2, fpp_icd10$Multiple_schlerosis)
+MS_X3 <- table(fpp_icd10$X3, fpp_icd10$Multiple_schlerosis)
+
+#myocardian infarction
+MI_X1 <- table(fpp_icd10$X1, fpp_icd10$Myocardial_infarction)
+MI_X2 <- table(fpp_icd10$X2, fpp_icd10$Myocardial_infarction)
+MI_X3 <- table(fpp_icd10$X3, fpp_icd10$Myocardial_infarction)
+
+#osteoporosis
+Osteo_X1 <- table(fpp_icd10$X1, fpp_icd10$Osteoporosis)
+Osteo_X2 <- table(fpp_icd10$X2, fpp_icd10$Osteoporosis)
+Osteo_X3 <- table(fpp_icd10$X3, fpp_icd10$Osteoporosis)
+
+#parkinson's disease
+Parkinson_X1 <- table(fpp_icd10$X1, fpp_icd10$Parkinsons_disease)
+Parkinson_X2 <- table(fpp_icd10$X2, fpp_icd10$Parkinsons_disease)
+Parkinson_X3 <- table(fpp_icd10$X3, fpp_icd10$Parkinsons_disease)
+
+#peripheral vascular disease
+PVD_X1 <- table(fpp_icd10$X1, fpp_icd10$Peripheral_vascular_disease)
+PVD_X2 <- table(fpp_icd10$X2, fpp_icd10$Peripheral_vascular_disease)
+PVD_X3 <- table(fpp_icd10$X3, fpp_icd10$Peripheral_vascular_disease)
+
+#prostate problem
+Prostate_X1 <- table(fpp_icd10$X1, fpp_icd10$Prostate_problem)
+Prostate_X2 <- table(fpp_icd10$X2, fpp_icd10$Prostate_problem)
+Prostate_X3 <- table(fpp_icd10$X3, fpp_icd10$Prostate_problem)
+
+#rheumatoid arthritis
+RA_X1 <- table(fpp_icd10$X1, fpp_icd10$Rheumatoid_arthritis)
+RA_X2 <- table(fpp_icd10$X2, fpp_icd10$Rheumatoid_arthritis)
+RA_X3 <- table(fpp_icd10$X3, fpp_icd10$Rheumatoid_arthritis)
+
+#schizophrenia
+Schizo_X1 <- table(fpp_icd10$X1, fpp_icd10$Schizophrenia)
+Schizo_X2 <- table(fpp_icd10$X2, fpp_icd10$Schizophrenia)
+Schizo_X3 <- table(fpp_icd10$X3, fpp_icd10$Schizophrenia)
+
+#stroke
+Stroke_X1 <- table(fpp_icd10$X1, fpp_icd10$Stroke)
+Stroke_X2 <- table(fpp_icd10$X2, fpp_icd10$Stroke)
+Stroke_X3 <- table(fpp_icd10$X3, fpp_icd10$Stroke)
+
+#thyroid problem
+Thyroid_X1 <- table(fpp_icd10$X1, fpp_icd10$Thyroid_problem)
+Thyroid_X2 <- table(fpp_icd10$X2, fpp_icd10$Thyroid_problem)
+Thyroid_X3 <- table(fpp_icd10$X3, fpp_icd10$Thyroid_problem)
+
+#tuberculosis
+TBC_X1 <- table(fpp_icd10$X1, fpp_icd10$Tuberculosis)
+TBC_X2 <- table(fpp_icd10$X2, fpp_icd10$Tuberculosis)
+TBC_X3 <- table(fpp_icd10$X3, fpp_icd10$Tuberculosis)
+
+#vestibular disorder
+Vestibular_X1 <- table(fpp_icd10$X1, fpp_icd10$Vestibular_disorder)
+Vestibular_X2 <- table(fpp_icd10$X2, fpp_icd10$Vestibular_disorder)
+Vestibular_X3 <- table(fpp_icd10$X3, fpp_icd10$Vestibular_disorder)
+
+#constipation
+Constipation_X1 <- table(fpp_icd10$X1, fpp_icd10$Constipation)
+Constipation_X2 <- table(fpp_icd10$X2, fpp_icd10$Constipation)
+Constipation_X3 <- table(fpp_icd10$X3, fpp_icd10$Constipation)
+
+#dyspepsia
+Dyspepsia_X1 <- table(fpp_icd10$X1, fpp_icd10$Dyspepsia)
+Dyspepsia_X2 <- table(fpp_icd10$X2, fpp_icd10$Dyspepsia)
+Dyspepsia_X3 <- table(fpp_icd10$X3, fpp_icd10$Dyspepsia)
+
+#hearing loss
+Hear_X1 <- table(fpp_icd10$X1, fpp_icd10$Hearing_loss)
+Hear_X2 <- table(fpp_icd10$X2, fpp_icd10$Hearing_loss)
+Hear_X3 <- table(fpp_icd10$X3, fpp_icd10$Hearing_loss)
+
+#diventicular diseases of intestine
+DDI_X1 <- table(fpp_icd10$X1, fpp_icd10$Diverticular_disease_of_intestine)
+DDI_X2 <- table(fpp_icd10$X2, fpp_icd10$Diverticular_disease_of_intestine)
+DDI_X3 <- table(fpp_icd10$X3, fpp_icd10$Diverticular_disease_of_intestine)
+
+#endometriosis
+Endometriosis_X1 <- table(fpp_icd10$X1, fpp_icd10$Endometriosis)
+Endometriosis_X2 <- table(fpp_icd10$X2, fpp_icd10$Endometriosis)
+Endometriosis_X3 <- table(fpp_icd10$X3, fpp_icd10$Endometriosis)
+
+################# Relative Risk formula ###############
+calcRelativeRisk <- function(tablename) {
+  # tablename is the name of a two by two table
+  # The table should have the exposure as the rows and the outcome as the columns
+  # The table should be coded as 0 = no, 1 = yes
+  # The function returns the relative risk, its 95% confidence interval, and the p-value
+  # The function also prints the results in a nice format
+  
+  # Extract the cell counts from the table
+  a <- tablename[2, 2] # exposed and diseased
+  b <- tablename[2, 1] # exposed and not diseased
+  c <- tablename[1, 2] # not exposed and diseased
+  d <- tablename[1, 1] # not exposed and not diseased
+  
+  # Calculate the relative risk
+  rr <- (a / (a + b)) / (c / (c + d))
+  
+  # Calculate the standard error of the log relative risk
+  se.logrr <- sqrt(1 / a + 1 / b + 1 / c + 1 / d)
+  
+  # Calculate the lower and upper limits of the log relative risk
+  logrr.lower <- log(rr) - 1.96 * se.logrr
+  logrr.upper <- log(rr) + 1.96 * se.logrr
+  
+  # Calculate the lower and upper limits of the relative risk
+  rr.lower <- exp(logrr.lower)
+  rr.upper <- exp(logrr.upper)
+  
+  # Calculate the z-score for the p-value
+  z_score <- (log(rr) - 0) / se.logrr
+  
+  # Calculate the two-tailed p-value
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  # Print the results
+  cat("Relative Risk:", rr, "\n")
+  cat("95% Confidence Interval:", rr.lower, "-", rr.upper, "\n")
+  cat("p-value:", p_value, "\n")
+  
+  # Return the results as a vector
+  return(c(rr, rr.lower, rr.upper, p_value))
+}
+
+################# Relative Risk calculation ###############
+rr_anemia_x1 <- calcRelativeRisk(Anaemia_X1)
+rr_anemia_x2 <- calcRelativeRisk(Anaemia_X2)
+rr_anemia_x3 <- calcRelativeRisk(Anaemia_X3)
+
+rr_angina_x1 <- calcRelativeRisk(Angina_X1)
+rr_angina_x2 <- calcRelativeRisk(Angina_X2)
+rr_angina_x3 <- calcRelativeRisk(Angina_X3)
+
+rr_anxiety_x1 <- calcRelativeRisk(Anxiety_X1)
+rr_anxiety_x2 <- calcRelativeRisk(Anxiety_X2)
+rr_anxiety_x3 <- calcRelativeRisk(Anxiety_X3)
+
+rr_asthma_x1 <- calcRelativeRisk(Asthma_X1)
+rr_asthma_x2 <- calcRelativeRisk(Asthma_X2)
+rr_asthma_x3 <- calcRelativeRisk(Asthma_X3)
+
+rr_atrial_x1 <- calcRelativeRisk(AF_X1)
+rr_atrial_x2 <- calcRelativeRisk(AF_X2)
+rr_atrial_x3 <- calcRelativeRisk(AF_X3)
+
+rr_bronch_x1 <- calcRelativeRisk(Bronch_X1)
+rr_bronch_x2 <- calcRelativeRisk(Bronch_X2)
+rr_bronch_x3 <- calcRelativeRisk(Bronch_X3)
+
+rr_cancer_x1 <- calcRelativeRisk(Cancer_X1)
+rr_cancer_x2 <- calcRelativeRisk(Cancer_X2)
+rr_cancer_x3 <- calcRelativeRisk(Cancer_X3)
+
+rr_ckd_x1 <- calcRelativeRisk(CKD_X1)
+rr_ckd_x2 <- calcRelativeRisk(CKD_X2)
+rr_ckd_x3 <- calcRelativeRisk(CKD_X3)
+
+rr_copd_x1 <- calcRelativeRisk(COPD_X1)
+rr_copd_x2 <- calcRelativeRisk(COPD_X2)
+rr_copd_x3 <- calcRelativeRisk(COPD_X3)
+
+rr_chrsin_x1 <- calcRelativeRisk(Chrsin_X1)
+rr_chrsin_x2 <- calcRelativeRisk(Chrsin_X2)
+rr_chrsin_x3 <- calcRelativeRisk(Chrsin_X3)
+
+rr_cirrhosis_x1 <- calcRelativeRisk(Cirrhosis_X1)
+rr_cirrhosis_x2 <- calcRelativeRisk(Cirrhosis_X2)
+rr_cirrhosis_x3 <- calcRelativeRisk(Cirrhosis_X3)
+
+rr_dementia_x1 <- calcRelativeRisk(Dementia_X1)
+rr_dementia_x2 <- calcRelativeRisk(Dementia_X2)
+rr_dementia_x3 <- calcRelativeRisk(Dementia_X3)
+
+rr_depression_x1 <- calcRelativeRisk(Depression_X1)
+rr_depression_x2 <- calcRelativeRisk(Depression_X2)
+rr_depression_x3 <- calcRelativeRisk(Depression_X3)
+
+rr_diabetes_x1 <- calcRelativeRisk(Diabetes_X1)
+rr_diabetes_x2 <- calcRelativeRisk(Diabetes_X2)
+rr_diabetes_x3 <- calcRelativeRisk(Diabetes_X3)
+
+rr_dermatitis_x1 <- calcRelativeRisk(Dermatitis_X1)
+rr_dermatitis_x2 <- calcRelativeRisk(Dermatitis_X2)
+rr_dermatitis_x3 <- calcRelativeRisk(Dermatitis_X3)
+
+rr_epilepsy_x1 <- calcRelativeRisk(Epilepsy_X1)
+rr_epilepsy_x2 <- calcRelativeRisk(Epilepsy_X2)
+rr_epilepsy_x3 <- calcRelativeRisk(Epilepsy_X3)
+
+rr_glaucoma_x1 <- calcRelativeRisk(Glaucoma_X1)
+rr_glaucoma_x2 <- calcRelativeRisk(Glaucoma_X2)
+rr_glaucoma_x3 <- calcRelativeRisk(Glaucoma_X3)
+
+rr_heart_x1 <- calcRelativeRisk(HF_X1)
+rr_heart_x2 <- calcRelativeRisk(HF_X2)
+rr_heart_x3 <- calcRelativeRisk(HF_X3)
+
+rr_hepatitis_x1 <- calcRelativeRisk(Hepatitis_X1)
+rr_hepatitis_x2 <- calcRelativeRisk(Hepatitis_X2)
+rr_hepatitis_x3 <- calcRelativeRisk(Hepatitis_X3)
+
+rr_hypertension_x1 <- calcRelativeRisk(Hypertension_X1)
+rr_hypertension_x2 <- calcRelativeRisk(Hypertension_X2)
+rr_hypertension_x3 <- calcRelativeRisk(Hypertension_X3)
+
+rr_ibd_x1 <- calcRelativeRisk(IBD_X1)
+rr_ibd_x2 <- calcRelativeRisk(IBD_X2)
+rr_ibd_x3 <- calcRelativeRisk(IBD_X3)
+
+rr_ibs_x1 <- calcRelativeRisk(IBS_X1)
+rr_ibs_x2 <- calcRelativeRisk(IBS_X2)
+rr_ibs_x3 <- calcRelativeRisk(IBS_X3)
+
+rr_meningitis_x1 <- calcRelativeRisk(Meningitis_X1)
+rr_meningitis_x2 <- calcRelativeRisk(Meningitis_X2)
+rr_meningitis_x3 <- calcRelativeRisk(Meningitis_X3)
+
+rr_migraine_x1 <- calcRelativeRisk(Migraine_X1)
+rr_migraine_x2 <- calcRelativeRisk(Migraine_X2)
+rr_migraine_x3 <- calcRelativeRisk(Migraine_X3)
+
+rr_schlerosis_x1 <- calcRelativeRisk(MS_X1)
+rr_schlerosis_x2 <- calcRelativeRisk(MS_X2)
+rr_schlerosis_x3 <- calcRelativeRisk(MS_X3)
+
+rr_myocardial_x1 <- calcRelativeRisk(MI_X1)
+rr_myocardial_x2 <- calcRelativeRisk(MI_X2)
+rr_myocardial_x3 <- calcRelativeRisk(MI_X3)
+
+rr_osteo_x1 <- calcRelativeRisk(Osteo_X1)
+rr_osteo_x2 <- calcRelativeRisk(Osteo_X2)
+rr_osteo_x3 <- calcRelativeRisk(Osteo_X3)
+
+rr_parkinson_x1 <- calcRelativeRisk(Parkinson_X1)
+rr_parkinson_x2 <- calcRelativeRisk(Parkinson_X2)
+rr_parkinson_x3 <- calcRelativeRisk(Parkinson_X3)
+
+rr_pvd_x1 <- calcRelativeRisk(PVD_X1)
+rr_pvd_x2 <- calcRelativeRisk(PVD_X2)
+rr_pvd_x3 <- calcRelativeRisk(PVD_X3)
+
+rr_prostate_x1 <- calcRelativeRisk(Prostate_X1)
+rr_prostate_x2 <- calcRelativeRisk(Prostate_X2)
+rr_prostate_x3 <- calcRelativeRisk(Prostate_X3)
+
+rr_rheumatoid_x1 <- calcRelativeRisk(RA_X1)
+rr_rheumatoid_x2 <- calcRelativeRisk(RA_X2)
+rr_rheumatoid_x3 <- calcRelativeRisk(RA_X3)
+
+rr_schizo_x1 <- calcRelativeRisk(Schizo_X1)
+rr_schizo_x2 <- calcRelativeRisk(Schizo_X2)
+rr_schizo_x3 <- calcRelativeRisk(Schizo_X3)
+
+rr_stroke_x1 <- calcRelativeRisk(Stroke_X1)
+rr_stroke_x2 <- calcRelativeRisk(Stroke_X2)
+rr_stroke_x3 <- calcRelativeRisk(Stroke_X3)
+
+rr_thyroid_x1 <- calcRelativeRisk(Thyroid_X1)
+rr_thyroid_x2 <- calcRelativeRisk(Thyroid_X2)
+rr_thyroid_x3 <- calcRelativeRisk(Thyroid_X3)
+
+rr_tbc_x1 <- calcRelativeRisk(TBC_X1)
+rr_tbc_x2 <- calcRelativeRisk(TBC_X2)
+rr_tbc_x3 <- calcRelativeRisk(TBC_X3)
+
+
+rr_vestibular_x1 <- calcRelativeRisk(Vestibular_X1)
+rr_vestibular_x2 <- calcRelativeRisk(Vestibular_X2)
+rr_vestibular_x3 <- calcRelativeRisk(Vestibular_X3)
+
+rr_constipation_x1 <- calcRelativeRisk(Constipation_X1)
+rr_constipation_x2 <- calcRelativeRisk(Constipation_X2)
+rr_constipation_x3 <- calcRelativeRisk(Constipation_X3)
+
+rr_dyspepsia_x1 <- calcRelativeRisk(Dyspepsia_X1)
+rr_dyspepsia_x2 <- calcRelativeRisk(Dyspepsia_X2)
+rr_dyspepsia_x3 <- calcRelativeRisk(Dyspepsia_X3)
+
+rr_hear_x1 <- calcRelativeRisk(Hear_X1)
+rr_hear_x2 <- calcRelativeRisk(Hear_X2)
+rr_hear_x3 <- calcRelativeRisk(Hear_X3)
+
+rr_diverticular_x1 <- calcRelativeRisk(DDI_X1)
+rr_diverticular_x2 <- calcRelativeRisk(DDI_X2)
+rr_diverticular_x3 <- calcRelativeRisk(DDI_X3)
+
+rr_endometriosis_x1 <- calcRelativeRisk(Endometriosis_X1)
+rr_endometriosis_x2 <- calcRelativeRisk(Endometriosis_X2)
+rr_endometriosis_x3 <- calcRelativeRisk(Endometriosis_X3)
+
