@@ -24,14 +24,36 @@ olink_ins_3 <- subset(olink_data, ins_index == "3")
 
 #add protein name column into dataset
 olink <- merge(olink_ins_0, name, by = "protein_id")
+olink_df <- olink %>%
+  select(eid, name, result) %>% 
+  pivot_wider(id_cols = eid, names_from = name, values_from = result)
 
-#add food preference profile and sociodemographic data
-olink_fpp <- merge (olink, fpp_sd, by = "eid")
+################# Preprocessing ###############
+#checking missing value
+#percentage of missing values by number of participants
+perc_miss_id <- rowMeans (is.na (olink_df)) * 100
+df_perc_missing_by_participant <- as.data.frame(perc_miss_id)
 
-# Read the expression dataframe
-npx_df <- olink_fpp[,4:2925] 
+#percentage of missing values by number of protein
+perc_miss <- colMeans (is.na (olink_df)) * 100
+df_perc_missing_by_protein <- as.data.frame(perc_miss)
+
+#data filtering
+olink_df$missing_pct <- apply(olink_df[,-1], 1, function(x) mean(is.na(x))) * 100
+
+olink_filtered <- olink_df %>% 
+  select (-GLIPR1, -NPM1, -PCOLCE) %>% 
+  filter(missing_pct < 25)
+
+#add food preference profile and sociodemographic data column
+olink_fpp <- merge (olink_filtered, fpp_sd, by = "eid")
+ 
 
 ################# Run Limma ###############
+# Read the expression dataframe
+npx_df <- olink_fpp[,1:2922] 
+npx_df <- column_to_rownames(npx_df, var = "eid")
+
 # Specify the sample condition
 outcome <- factor(olink_fpp$profile)
 age <- as.numeric(olink_fpp$age_when_attended_assessment_centre_f21003_0_0)
@@ -42,18 +64,19 @@ design <- model.matrix(~0 + outcome + age + sex, olink_fpp)
 # lmFit fits a linear model using weighted least squares for each protein:
 fit <- lmFit(t(npx_df), design)
 
-# Comparisons between groups (log fold-changes) are obtained as contrasts of
-# these fitted linear models:
-# Samples are grouped based on experimental condition
-# The variability of protein expression is compared between these groups
-contr <- makeContrasts(outcome1 - outcome2, levels = design)
+#Run Limma for three-way comparison
+contr <- makeContrasts(outcome1 - outcome2, outcome1 - outcome3, outcome2 - outcome3, levels = design)
 
-# Estimate contrast for each protein
+## Estimate contrast for each protein
 tmp <- contrasts.fit(fit, contr)
 
-# Empirical Bayes smoothing of standard errors (shrinks standard errors
-# that are much larger or smaller than those from other proteins towards the average standard error)
+## Empirical Bayes smoothing of standard errors (shrinks standard errors that are much larger or smaller than those from other proteins towards the average standard error)
 tmp <- eBayes(tmp)
+
+## Three-way results
+top.table <- topTable(tmp, sort.by = "F", n = Inf)
+results <-  as.data.frame(top.table)
+results$protein <- row.names(results)
 
 # Run Limma for pairwise comparison
 ## Comparisons between groups (log fold-changes) are obtained as contrasts of these fitted linear models:
@@ -62,7 +85,6 @@ tmp <- eBayes(tmp)
 contr12 <- makeContrasts(outcome1 - outcome2, levels = design)
 contr13 <- makeContrasts(outcome1 - outcome3, levels = design)
 contr23 <- makeContrasts(outcome2 - outcome3, levels = design)
-
 
 ## Estimate contrast for each protein
 tmp12 <- contrasts.fit(fit, contr12)
@@ -75,15 +97,14 @@ tmp13 <- eBayes(tmp13)
 tmp23 <- eBayes(tmp23)
 
 ##Pairwise results
+top.table12 <- topTable(tmp12, sort.by = "P", n = Inf)
+results12 <-  as.data.frame(top.table12)
+
 top.table13 <- topTable(tmp13, sort.by = "P", n = Inf)
 results13 <-  as.data.frame(top.table13)
 
 top.table23 <- topTable(tmp23, sort.by = "P", n = Inf)
 results23 <-  as.data.frame(top.table23)
-
-# Extract results
-top.table <- topTable(tmp, sort.by = "P", n = Inf)
-results <-  as.data.frame(top.table)
 
 #pairwise analysis with important protein
 X1_vs_X2 <- results12 %>%
