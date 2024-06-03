@@ -53,7 +53,7 @@ fpp_icd10$Vestibular_disorder <- ifelse(grepl("H81|H82|H83",fpp_icd10$diagnoses_
 fpp_icd10$Constipation <- ifelse(grepl("K59",fpp_icd10$diagnoses_icd10), 1, 0) # Constipation
 fpp_icd10$Dyspepsia <- ifelse(grepl("K30|K31",fpp_icd10$diagnoses_icd10), 1, 0) # Dyspepsia
 fpp_icd10$Hearing_loss <- ifelse(grepl("H90|H91",fpp_icd10$diagnoses_icd10), 1, 0) # Conductive and sensorineural hearing loss
-fpp_icd10$Diverticular_disease_of_intestine <- ifelse(grepl("K57|K58",fpp_icd10$diagnoses_icd10), 1, 0) #Diversticular disease of intestine
+fpp_icd10$Diverticular_disease_of_intestine <- ifelse(grepl("K57",fpp_icd10$diagnoses_icd10), 1, 0) #Diversticular disease of intestine
 fpp_icd10$Endometriosis <- ifelse(grepl("N80",fpp_icd10$diagnoses_icd10), 1, 0) # Endometriosis
 
 ################# Create contingency table ###############
